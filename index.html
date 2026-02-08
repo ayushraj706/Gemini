@@ -2,93 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BotKey AI</title>
-    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#131314">
     
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
-        /* --- YAHAN AAPKA STYLE.CSS HAI --- */
-        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300..800&display=swap');
+        /* --- DESIGN (CSS) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Open Sans", sans-serif; }
         
-        :root {
-            --primary-color: #131314;
-            --secondary-color: #1E1F20;
-            --text-color: #fff;
-            --text-secondary: #D8D8D8;
+        body { 
+            background-color: #131314; 
+            color: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; /* App jaisa feel */
         }
 
-        body {
-            margin: 0; padding: 0;
-            background: var(--primary-color);
-            color: var(--text-color);
-            font-family: "Open Sans", sans-serif;
-            display: flex; flex-direction: column; height: 100vh;
+        /* Header Area */
+        .header {
+            padding: 20px;
+            text-align: center;
+            transition: opacity 0.3s;
         }
-
-        /* Header Styles */
-        .header { text-align: center; margin-top: 10vh; padding: 0 20px; transition: 0.3s; }
         .header h1 {
             background: linear-gradient(to right, #4a90e2, #a355b9, #ff6b6b);
-            -webkit-background-clip: text; color: transparent;
-            font-size: 3rem; margin: 0;
+            -webkit-background-clip: text;
+            color: transparent;
+            font-size: 2.5rem;
+            margin-bottom: 5px;
         }
-        .header h2 { color: #444746; font-size: 2rem; margin-top: 5px; }
+        .header h2 { color: #444746; font-size: 1.5rem; font-weight: 400; }
 
-        /* Suggestions Grid */
+        /* Suggestions */
         .suggests {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px; max-width: 800px; margin: 40px auto;
+            display: flex; gap: 10px; overflow-x: auto; padding: 20px;
+            justify-content: center;
         }
         .suggests__item {
-            background: var(--secondary-color); padding: 15px;
-            border-radius: 12px; cursor: pointer; height: 120px;
-            display: flex; flex-direction: column; justify-content: space-between;
+            background: #1E1F20; padding: 15px; border-radius: 12px;
+            min-width: 140px; cursor: pointer; display: flex; flex-direction: column; gap: 10px;
         }
-        .suggests__item:hover { background: #333537; }
-        .suggests__item-icon i { font-size: 1.5rem; background: #000; padding: 5px; border-radius: 50%; float: right; }
+        .suggests__item:active { background: #333; }
+        .suggests__item i { align-self: flex-end; background: #000; padding: 5px; border-radius: 50%; }
 
         /* Chat Area */
         .chats {
             flex: 1; overflow-y: auto; padding: 20px;
-            max-width: 824px; margin: 0 auto; width: 100%;
+            padding-bottom: 90px; /* Input ke liye jagah */
             display: flex; flex-direction: column; gap: 20px;
-            padding-bottom: 100px; /* Input ke liye jagah */
         }
-        .message { display: flex; gap: 15px; align-items: start; }
-        .message__avatar { width: 35px; height: 35px; border-radius: 50%; }
-        .message__text { line-height: 1.6; background: transparent; }
+        .message { display: flex; gap: 15px; max-width: 100%; }
         .user-msg { flex-direction: row-reverse; }
-        .user-msg .message__text { background: #333537; padding: 10px 15px; border-radius: 20px; }
-
-        /* Input Area */
-        .prompt {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: var(--primary-color); padding: 20px;
+        
+        .message__text {
+            background: transparent;
+            line-height: 1.6;
+            font-size: 16px; /* Zoom fix */
+            max-width: 85%;
+            word-wrap: break-word;
         }
-        .prompt__input-wrapper {
-            max-width: 824px; margin: 0 auto; position: relative;
-            background: var(--secondary-color); border-radius: 50px;
-            display: flex; align-items: center; padding: 5px 20px;
+        .user-msg .message__text {
+            background: #333537;
+            padding: 10px 15px;
+            border-radius: 20px 4px 20px 20px;
         }
-        .prompt__form-input {
-            flex: 1; background: transparent; border: none;
-            color: white; padding: 15px; font-size: 1rem; outline: none;
-        }
-        .prompt__form-button {
-            background: transparent; border: none; color: white;
-            font-size: 1.5rem; cursor: pointer;
+        .bot-msg .message__text {
+            padding-top: 5px;
         }
         
-        /* Mobile Fixes */
-        @media (max-width: 600px) {
-            .header h1 { font-size: 2rem; }
-            .header h2 { font-size: 1.5rem; }
-            .suggests { grid-template-columns: 1fr 1fr; }
+        .avatar {
+            width: 35px; height: 35px; border-radius: 50%; object-fit: cover;
+            flex-shrink: 0;
         }
+
+        /* Input Area (Bottom Fixed) */
+        .prompt {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #131314; padding: 15px;
+        }
+        .prompt__wrapper {
+            background: #1E1F20; border-radius: 30px;
+            display: flex; align-items: center; padding: 5px 15px;
+        }
+        input {
+            flex: 1; background: transparent; border: none;
+            color: white; padding: 12px; font-size: 16px; /* Zoom fix */
+            outline: none;
+        }
+        button {
+            background: transparent; border: none; color: white;
+            font-size: 1.4rem; padding: 5px; cursor: pointer;
+        }
+
+        /* Error Text */
+        .error-text { color: #ff6b6b; font-size: 14px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -98,13 +111,13 @@
         <h2>How can I help you today?</h2>
         
         <div class="suggests">
-            <div class="suggests__item" onclick="sendPrompt('Bihar Board 10th Exam Date?')">
-                <p>Bihar Board Exam Date?</p>
-                <div class="suggests__item-icon"><i class="bx bx-calendar"></i></div>
+            <div class="suggests__item" onclick="sendPrompt('Bihar Board 10th Date?')">
+                <p>Bihar Board Date?</p>
+                <i class='bx bx-calendar'></i>
             </div>
-            <div class="suggests__item" onclick="sendPrompt('Write a leave letter')">
-                <p>Write a leave letter</p>
-                <div class="suggests__item-icon"><i class="bx bx-edit-alt"></i></div>
+            <div class="suggests__item" onclick="sendPrompt('Write a leave application')">
+                <p>Leave Application</p>
+                <i class='bx bx-edit-alt'></i>
             </div>
         </div>
     </div>
@@ -113,15 +126,15 @@
 
     <div class="prompt">
         <form onsubmit="handleChat(event)">
-            <div class="prompt__input-wrapper">
-                <input type="text" id="promptInput" class="prompt__form-input" placeholder="Enter a prompt here" required>
-                <button type="submit" class="prompt__form-button"><i class="bx bx-send"></i></button>
+            <div class="prompt__wrapper">
+                <input type="text" id="promptInput" placeholder="Enter a prompt here" required>
+                <button type="submit"><i class='bx bx-send'></i></button>
             </div>
         </form>
     </div>
 
     <script>
-        // --- YAHAN AAPKA SCRIPT.JS HAI ---
+        // --- LOGIC (JAVASCRIPT) ---
         const chatContainer = document.getElementById("chatContainer");
         const headerSection = document.getElementById("headerSection");
         const promptInput = document.getElementById("promptInput");
@@ -131,45 +144,58 @@
             const text = promptInput.value.trim();
             if(!text) return;
 
-            headerSection.style.display = 'none'; // Header chupao
-            addMessage(text, true); // User message dikhao
+            // 1. UI Update karo
+            headerSection.style.display = 'none';
+            addMessage(text, true); // User ka message
             promptInput.value = '';
-
-            // Loading Animation
+            
+            // 2. Loading dikhao
             const loadingId = addMessage("Thinking...", false, true);
 
             try {
-                const res = await fetch('/api', {
+                // 3. SERVER CALL (Path Dhyan Se Dekho: /api/index)
+                const res = await fetch('/api/index', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: text })
                 });
+
                 const data = await res.json();
                 
-                // Loading hatao aur asli jawab dikhao
-                document.getElementById(loadingId).remove();
-                addMessage(data.answer, false);
+                // 4. Jawab Dikhao
+                document.getElementById(loadingId).remove(); // Loading hatao
+                if(data.answer) {
+                    addMessage(data.answer, false);
+                } else {
+                    addMessage("Error: " + JSON.stringify(data), false);
+                }
+
             } catch (err) {
-                document.getElementById(loadingId).innerText = "Error: Server connect nahi hua.";
+                document.getElementById(loadingId).remove();
+                addMessage("Error: Server connect nahi hua. (Check api/index.py)", false);
+                console.error(err);
             }
         }
 
-        function addMessage(text, isUser, isLoading = false) {
+        function addMessage(text, isUser, isLoading=false) {
             const div = document.createElement('div');
             div.className = `message ${isUser ? 'user-msg' : 'bot-msg'}`;
             const id = 'msg-' + Date.now();
             div.id = id;
-            
-            const iconUrl = isUser ? 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png' : 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
-            
-            // Markdown Parse sirf Bot ke liye
-            const content = isUser || isLoading ? text : marked.parse(text);
+
+            // Avatar URLs
+            const userIcon = "https://cdn-icons-png.flaticon.com/512/1144/1144760.png";
+            const botIcon = "https://cdn-icons-png.flaticon.com/512/4712/4712027.png";
+
+            // Markdown Parse (Sirf Bot ke liye)
+            const content = (isUser || isLoading) ? text : marked.parse(text);
 
             div.innerHTML = `
-                ${isUser ? '' : `<img src="${iconUrl}" class="message__avatar">`}
+                ${!isUser ? `<img src="${botIcon}" class="avatar">` : ''}
                 <div class="message__text">${content}</div>
-                ${isUser ? `<img src="${iconUrl}" class="message__avatar">` : ''}
+                ${isUser ? `<img src="${userIcon}" class="avatar">` : ''}
             `;
+            
             chatContainer.appendChild(div);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             return id;
