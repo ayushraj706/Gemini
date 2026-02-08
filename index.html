@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BaseKey AI</title>
+    <meta name="theme-color" content="#131314">
+    
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -13,51 +15,113 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Open Sans", sans-serif; }
-        body { background-color: #131314; color: #fff; height: 100vh; display: flex; flex-direction: column; }
+        body { background-color: #131314; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* SCREENS */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; }
+        .active-screen { display: flex; }
+
+        /* 1. LOGIN SCREEN */
+        #login-screen { justify-content: center; align-items: center; background: #131314; gap: 20px; z-index: 200; }
+        .login-card { text-align: center; }
+        .google-btn {
+            background: #ffffff; color: #333; padding: 12px 24px;
+            border-radius: 30px; border: none; font-weight: 600; font-size: 16px;
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            transition: transform 0.2s; margin-top: 20px;
+        }
+        .google-btn:active { transform: scale(0.95); }
+
+        /* 2. OTP OVERLAY (Popup) */
+        #otp-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 300;
+            display: none; justify-content: center; align-items: center; flex-direction: column; gap: 15px;
+        }
+        .otp-box {
+            background: #1E1F20; padding: 25px; border-radius: 20px; border: 1px solid #444;
+            text-align: center; width: 90%; max-width: 350px;
+        }
+        .otp-input {
+            width: 100%; padding: 12px; margin: 15px 0; background: #282A2C;
+            border: 1px solid #555; color: white; border-radius: 8px; font-size: 18px; text-align: center; letter-spacing: 5px;
+        }
+        .verify-btn {
+            background: #a8c7fa; color: #000; border: none; padding: 10px 20px;
+            border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%;
+        }
+
+        /* 3. APP SCREEN (Chat) */
+        .navbar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; background: #131314; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-info img { width: 32px; height: 32px; border-radius: 50%; }
         
-        #login-screen { position: fixed; inset: 0; background: #131314; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; }
-        .btn { padding: 12px 24px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; }
-        .google-btn { background: #fff; color: #333; display: flex; gap: 10px; align-items: center; }
-        .otp-btn { background: transparent; border: 1px solid #555; color: #aaa; }
-        .input-box { background: #1E1F20; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; }
+        .header { padding: 20px; text-align: center; margin-top: 5vh; }
+        .header h1 { background: linear-gradient(to right, #4a90e2, #a355b9, #ff6b6b); -webkit-background-clip: text; color: transparent; font-size: 2.5rem; font-weight: 600; }
         
-        #app-screen { display: none; flex-direction: column; height: 100%; }
-        .chats { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        .message { padding: 10px 15px; border-radius: 10px; max-width: 85%; }
-        .user-msg { align-self: flex-end; background: #282A2C; }
-        .bot-msg { align-self: flex-start; color: #E3E3E3; }
-        .prompt { padding: 15px; background: #131314; }
-        input { background: #1E1F20; border: none; color: white; padding: 10px; width: 100%; border-radius: 20px; }
+        .chats { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin: 0 auto; width: 100%; padding-bottom: 100px; }
+        .message { display: flex; gap: 10px; max-width: 100%; }
+        .user-msg { flex-direction: row-reverse; }
+        .message__text { background: transparent; color: #E3E3E3; max-width: 85%; word-wrap: break-word; line-height: 1.6; }
+        .user-msg .message__text { background: #282A2C; padding: 10px 15px; border-radius: 20px 4px 20px 20px; }
+        .avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; }
+        
+        .prompt { position: fixed; bottom: 0; left: 0; right: 0; background: #131314; padding: 15px; }
+        .prompt__wrapper { background: #1E1F20; border-radius: 30px; display: flex; align-items: center; padding: 8px 20px; max-width: 800px; margin: 0 auto; border: 1px solid #444746; }
+        input { flex: 1; background: transparent; border: none; color: white; padding: 10px; font-size: 16px; outline: none; }
+        button { background: transparent; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="login-screen">
-        <h1>BaseKey AI</h1>
-        <button class="btn google-btn" onclick="loginWithGoogle()">Sign in with Google</button>
-        <button class="btn otp-btn" onclick="showOtpForm()">Login with OTP</button>
-        
-        <div id="otp-form" style="display:none; flex-direction:column; gap:10px;">
-            <input id="emailInput" class="input-box" placeholder="Email Address">
-            <button class="btn" style="background:#a8c7fa;" onclick="sendOtp()">Send OTP</button>
-            
-            <div id="verify-section" style="display:none;">
-                <input id="otpInput" class="input-box" placeholder="Enter OTP">
-                <button class="btn" style="background:#34a853; color:white;" onclick="verifyOtp()">Verify</button>
-            </div>
-            <p id="status" style="color:red; font-size:12px;"></p>
+    <div id="login-screen" class="screen active-screen">
+        <div class="login-card">
+            <h1 style="font-size: 2.5rem; font-weight: 600; margin-bottom: 10px;">BaseKey AI</h1>
+            <p style="color: #aaa;">Secure Login Required</p>
+            <button class="google-btn" onclick="handleGoogleLogin()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+                Continue with Google
+            </button>
         </div>
     </div>
 
-    <div id="app-screen">
+    <div id="otp-overlay">
+        <div class="otp-box">
+            <h2 style="margin-bottom: 10px;">Verify Identity</h2>
+            <p style="color: #aaa; font-size: 13px;">OTP sent to <span id="otp-email" style="color: #fff;">email</span></p>
+            <input type="text" id="otpInput" class="otp-input" placeholder="Enter OTP" maxlength="6">
+            <button class="verify-btn" onclick="verifyOtp()">Verify & Enter</button>
+            <p id="otp-status" style="color: #ff6b6b; margin-top: 10px; font-size: 12px;"></p>
+        </div>
+    </div>
+
+    <div id="app-screen" class="screen">
+        <nav class="navbar">
+            <div class="user-info">
+                <img id="userPic" src="">
+                <span id="userName" style="font-weight: 600;">User</span>
+            </div>
+            <i class='bx bx-log-out' style="font-size: 1.5rem; cursor: pointer; color: #ff6b6b;" onclick="logout()"></i>
+        </nav>
+
+        <div class="header" id="headerSection">
+            <h1>Hello, Friend</h1>
+            <h2>How can I help you today?</h2>
+        </div>
+
         <div class="chats" id="chatContainer"></div>
+
         <div class="prompt">
-            <form onsubmit="handleChat(event)"><input id="promptInput" placeholder="Message..." required autocomplete="off"></form>
+            <form onsubmit="handleChat(event)">
+                <div class="prompt__wrapper">
+                    <input type="text" id="promptInput" placeholder="Message BaseKey..." required autocomplete="off">
+                    <button type="submit"><i class='bx bx-send'></i></button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script>
-        // FIREBASE SETUP
+        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCDmDsi_JMQgx_QO4p8bnvfh-vKdN4Bmk8",
             authDomain: "success-points.firebaseapp.com",
@@ -70,86 +134,167 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         let currentUser = null;
+        let pendingEmail = "";
 
-        auth.onAuthStateChanged(u => {
-            if(u) { currentUser = u; document.getElementById("login-screen").style.display="none"; document.getElementById("app-screen").style.display="flex"; loadChats(); }
-            else { document.getElementById("login-screen").style.display="flex"; document.getElementById("app-screen").style.display="none"; }
-        });
-
-        function loginWithGoogle() {
-            const p = new firebase.auth.GoogleAuthProvider();
-            p.setCustomParameters({ client_id: "51177935348-vcl2gvtlnqittjra8emmtuehrvifj02u.apps.googleusercontent.com" });
-            auth.signInWithPopup(p).catch(e => alert(e.message));
+        // --- AUTH FLOW ---
+        // 1. Google Login Click
+        function handleGoogleLogin() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({
+                client_id: "51177935348-vcl2gvtlnqittjra8emmtuehrvifj02u.apps.googleusercontent.com"
+            });
+            
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    // Login Success, but wait! Don't show chat yet.
+                    // Send OTP first.
+                    currentUser = result.user;
+                    pendingEmail = result.user.email;
+                    sendOtpToEmail(pendingEmail);
+                })
+                .catch((error) => alert(error.message));
         }
 
-        function showOtpForm() { document.getElementById("otp-form").style.display="flex"; }
-
-        // --- OTP LOGIC (Updated Path) ---
-        async function sendOtp() {
-            const email = document.getElementById("emailInput").value;
-            const res = await fetch('/api/index', { // Changed to /api/index
+        // 2. Send OTP Logic
+        async function sendOtpToEmail(email) {
+            document.getElementById("otp-email").innerText = email;
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("otp-overlay").style.display = "flex";
+            
+            const res = await fetch('/api/index', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ type: 'send-otp', email: email })
             });
+        }
+
+        // 3. Verify OTP Logic
+        async function verifyOtp() {
+            const userOtp = document.getElementById("otpInput").value;
+            const btn = document.querySelector(".verify-btn");
+            btn.innerText = "Verifying...";
+            
+            const res = await fetch('/api/index', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ type: 'verify-otp', email: pendingEmail, otp: userOtp })
+            });
+            
             const data = await res.json();
             if(data.success) {
-                document.getElementById("verify-section").style.display="block";
-                document.getElementById("status").innerText="OTP Sent!";
+                // OTP Correct! Now show Chat.
+                document.getElementById("otp-overlay").style.display = "none";
+                document.getElementById("app-screen").style.display = "flex";
+                setupUI();
             } else {
-                document.getElementById("status").innerText=data.error;
+                document.getElementById("otp-status").innerText = "Wrong OTP! Check Email again.";
+                btn.innerText = "Verify & Enter";
             }
         }
 
-        async function verifyOtp() {
-            const email = document.getElementById("emailInput").value;
-            const otp = document.getElementById("otpInput").value;
-            const res = await fetch('/api/index', { // Changed to /api/index
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ type: 'verify-otp', email: email, otp: otp })
-            });
-            const data = await res.json();
-            if(data.success) {
-                await auth.signInAnonymously(); // Fake login for UI
-            } else {
-                alert("Invalid OTP");
+        function setupUI() {
+            if(currentUser) {
+                document.getElementById("userName").innerText = currentUser.displayName.split(" ")[0];
+                document.getElementById("userPic").src = currentUser.photoURL;
+                loadChats();
             }
+        }
+
+        function logout() {
+            auth.signOut();
+            window.location.reload();
         }
 
         // --- CHAT LOGIC ---
+        const chatContainer = document.getElementById("chatContainer");
+        const promptInput = document.getElementById("promptInput");
+        const headerSection = document.getElementById("headerSection");
+
+        function getLoadingState(text) {
+            text = text.toLowerCase();
+            if (text.includes("youtube") || text.includes("video")) return { text: "Watching Video...", icon: "<i class='bx bxl-youtube' style='color:#f00;'></i>" };
+            if (text.includes("map") || text.includes("kaha")) return { text: "Checking Maps...", icon: "<i class='bx bx-map-alt' style='color:#34a853;'></i>" };
+            if (text.includes("code") || text.includes("html")) return { text: "Writing Code...", icon: "<i class='bx bx-code-alt' style='color:#a8c7fa;'></i>" };
+            return { text: "Thinking...", icon: "<i class='bx bx-loader-alt bx-spin'></i>" };
+        }
+
         async function handleChat(e) {
             e.preventDefault();
-            const txt = document.getElementById("promptInput").value;
-            if(!txt) return;
-            document.getElementById("promptInput").value="";
-            addMsg(txt, true);
-            
+            const text = promptInput.value.trim();
+            if(!text) return;
+
+            headerSection.style.display = 'none';
+            addMessage(text, true);
+            saveToDB(text, true);
+            promptInput.value = '';
+
+            const state = getLoadingState(text);
+            const loadId = addLoading(state.text, state.icon);
+
             try {
                 const res = await fetch('/api/index', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ question: txt }) // Normal chat request
+                    body: JSON.stringify({ question: text })
                 });
                 const data = await res.json();
-                if(data.answer) addMsg(data.answer, false);
-            } catch(err) { addMsg("Error: " + err.message, false); }
+                document.getElementById(loadId).remove();
+                
+                if(data.answer) {
+                    addMessage(data.answer, false);
+                    saveToDB(data.answer, false);
+                }
+            } catch(err) {
+                document.getElementById(loadId).remove();
+                addMessage("Error: " + err.message, false);
+            }
         }
 
-        function addMsg(txt, isUser) {
-            const d = document.createElement("div");
-            d.className = `message ${isUser ? 'user-msg' : 'bot-msg'}`;
-            d.innerHTML = marked.parse(txt);
-            document.getElementById("chatContainer").appendChild(d);
+        function addMessage(text, isUser) {
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user-msg' : 'bot-msg'}`;
+            const botIcon = "https://cdn-icons-png.flaticon.com/512/4712/4712027.png";
+            const userIcon = currentUser ? currentUser.photoURL : "https://cdn-icons-png.flaticon.com/512/1144/1144760.png";
+            
+            div.innerHTML = `
+                ${!isUser ? `<img src="${botIcon}" class="avatar">` : ''}
+                <div class="message__text">${marked.parse(text)}</div>
+                ${isUser ? `<img src="${userIcon}" class="avatar">` : ''}
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addLoading(text, icon) {
+            const div = document.createElement('div');
+            div.className = 'message bot-msg';
+            div.id = 'load-' + Date.now();
+            const botIcon = "https://cdn-icons-png.flaticon.com/512/4712/4712027.png";
+            div.innerHTML = `
+                <img src="${botIcon}" class="avatar">
+                <div class="message__text" style="color:#aaa; display:flex; gap:5px; align-items:center;">${icon} ${text}</div>
+            `;
+            chatContainer.appendChild(div);
+            return div.id;
+        }
+
+        function saveToDB(text, isUser) {
+            if(currentUser) {
+                db.collection("users").doc(currentUser.uid).collection("chats").add({
+                    text, isUser, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
         }
 
         function loadChats() {
             if(!currentUser) return;
-            db.collection("users").doc(currentUser.uid).collection("chats").orderBy("timestamp").get().then(s => {
-                s.forEach(d => addMsg(d.data().text, d.data().isUser));
+            db.collection("users").doc(currentUser.uid).collection("chats").orderBy("timestamp").get().then(snap => {
+                if(!snap.empty) {
+                    headerSection.style.display = 'none';
+                    snap.forEach(doc => addMessage(doc.data().text, doc.data().isUser));
+                }
             });
         }
     </script>
 </body>
 </html>
-
