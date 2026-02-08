@@ -4,22 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BotKey AI</title>
-    
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#131314">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">
-
+    
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
     <link rel="stylesheet" href="style.css" />
   </head>
 
   <body>
     <nav class="navbar">
       <h3 class="navbar__logo">BotKey <span style="color:#4b90ff;">AI</span></h3>
-      <div class="navbar__buttons">
-         </div>
     </nav>
 
     <header class="header" id="headerSection">
@@ -29,8 +24,8 @@
       </div>
       
       <div class="suggests">
-        <div class="suggests__item" onclick="fillPrompt('Bihar Board 10th Exam Tips')">
-          <p class="suggests__item-text">Bihar Board 10th Exam Tips</p>
+        <div class="suggests__item" onclick="fillPrompt('Bihar Board 10th Exam Date?')">
+          <p class="suggests__item-text">Bihar Board 10th Exam Date?</p>
           <div class="suggests__item-icon"><i class="bx bx-compass"></i></div>
         </div>
         <div class="suggests__item" onclick="fillPrompt('Write a leave application')">
@@ -43,23 +38,15 @@
     <section class="chats" id="chatContainer"></section>
 
     <section class="prompt">
-      <form action="#" class="prompt__form" id="chatForm" novalidate>
+      <form action="#" class="prompt__form" id="chatForm">
         <div class="prompt__input-wrapper">
-          <input
-            type="text"
-            placeholder="Enter a prompt here"
-            class="prompt__form-input"
-            id="promptInput"
-            required
-          />
+          <input type="text" placeholder="Enter a prompt here" class="prompt__form-input" id="promptInput" required />
           <button type="submit" class="prompt__form-button" id="sendButton">
             <i class="bx bx-send"></i>
           </button>
         </div>
       </form>
-      <p class="prompt__disclaim">
-        BotKey AI may display inaccurate info, please double-check.
-      </p>
+      <p class="prompt__disclaim">BotKey AI can make mistakes. Check important info.</p>
     </section>
 
     <script src="script.js"></script>
