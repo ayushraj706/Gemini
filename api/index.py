@@ -8,52 +8,27 @@ import random
 
 app = Flask(__name__)
 
-# --- MEMORY FOR OTP ---
 otp_storage = {}
 
-# --- HELPER 1: PROFESSIONAL EMAIL TEMPLATE 🎨 ---
+# --- 1. EMAIL DESIGN ---
 def get_email_template(otp):
     return f"""
     <!DOCTYPE html>
     <html>
-    <head>
-        <style>
-            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }}
-            .container {{ max-width: 500px; margin: 30px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e0e0e0; }}
-            .header {{ background-color: #2563EB; color: #ffffff; padding: 20px; text-align: center; }}
-            .header h1 {{ margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 1px; }}
-            .content {{ padding: 30px 20px; text-align: center; }}
-            .text {{ color: #333333; font-size: 16px; margin-bottom: 20px; }}
-            .otp-box {{ background-color: #f0f7ff; border: 2px dashed #2563EB; border-radius: 8px; padding: 15px; display: inline-block; margin: 10px 0; }}
-            .otp-code {{ font-size: 32px; font-weight: bold; color: #2563EB; letter-spacing: 5px; margin: 0; }}
-            .footer {{ background-color: #f9f9f9; padding: 15px; text-align: center; color: #888888; font-size: 12px; border-top: 1px solid #eeeeee; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>BaseKey AI</h1>
+    <body style="font-family: sans-serif; background: #f4f4f4; padding: 20px;">
+        <div style="max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; border: 1px solid #ddd; text-align: center;">
+            <h1 style="color: #2563EB; margin: 0;">BaseKey AI</h1>
+            <p style="color: #555;">Secure Login Verification</p>
+            <div style="background: #eef6ff; padding: 15px; border: 2px dashed #2563EB; border-radius: 8px; display: inline-block; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; color: #2563EB; letter-spacing: 5px;">{otp}</span>
             </div>
-            <div class="content">
-                <p class="text">Hello,</p>
-                <p class="text">Use the One-Time Password (OTP) below to securely log in to your account.</p>
-                
-                <div class="otp-box">
-                    <p class="otp-code">{otp}</p>
-                </div>
-                
-                <p class="text" style="font-size: 14px; color: #666; margin-top: 20px;">This code is valid for 10 minutes. Do not share it with anyone.</p>
-            </div>
-            <div class="footer">
-                &copy; 2026 BaseKey AI Systems. All rights reserved.<br>
-                Secure Login Verification
-            </div>
+            <p style="font-size: 12px; color: #888;">Do not share this code.</p>
         </div>
     </body>
     </html>
     """
 
-# --- HELPER 2: YOUTUBE & GEMINI LOGIC ---
+# --- 2. HELPERS ---
 def extract_video_id(url):
     patterns = [r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})']
     for pattern in patterns:
@@ -67,6 +42,34 @@ def get_youtube_transcript(video_id):
         return " ".join([t['text'] for t in transcript_list])
     except: return None
 
+# --- 3. SMART MODEL FINDER (Ye hai naya Jaadoo) ---
+def get_best_working_model(api_key):
+    # Google se pucho: "Tere paas kaunse models hain?"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            # Hum sirf wo models lenge jo 'generateContent' support karte hain
+            # Aur hum 'gemini' wale models ko priority denge
+            available_models = []
+            for m in data.get('models', []):
+                if 'generateContent' in m.get('supportedGenerationMethods', []):
+                    name = m['name'].replace('models/', '') # Name saaf karo
+                    available_models.append(name)
+            
+            # Priority List: Flash (Fast/Free) -> Pro (Stable) -> Others
+            priority = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-pro', 'gemini-1.0-pro']
+            
+            # List ko sort karo hamari pasand ke hisab se
+            available_models.sort(key=lambda x: priority.index(x) if x in priority else 99)
+            return available_models
+    except:
+        pass
+    
+    # Agar Google ki list API fail ho jaye, to ye backup list use karo
+    return ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro-latest"]
+
 # --- MAIN ROUTE ---
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
 @app.route('/<path:path>', methods=['GET', 'POST'])
@@ -75,73 +78,78 @@ def catch_all(path):
     resend_key = os.environ.get("RESEND_API_KEY")
 
     if request.method == 'GET':
-        return jsonify({"status": "Online"})
+        return jsonify({"status": "Online", "message": "Auto-Model Engine Ready"})
 
     try:
         data = request.json
         action_type = data.get('type')
 
-        # --- A. SEND OTP (DESIGNED EMAIL) ---
+        # --- OTP LOGIC ---
         if action_type == 'send-otp':
-            if not resend_key: return jsonify({"success": False, "error": "Resend API Key Missing"})
+            if not resend_key: return jsonify({"success": False, "error": "Resend Key Missing"})
             email = data.get('email')
             otp = str(random.randint(100000, 999999))
             otp_storage[email] = otp
             
+            # Note: "from" mein apna verified domain use karein
             resp = requests.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
                 json={
-                    "from": "onboarding@resend.dev",
+                    "from": "BaseKey Security <login@ayus.fun>", 
                     "to": email,
-                    "subject": "🔐 BaseKey Login Code: " + otp,
-                    "html": get_email_template(otp) # Naya Design Call Kiya
+                    "subject": f"🔐 Login Code: {otp}",
+                    "html": get_email_template(otp)
                 }
             )
-            if resp.status_code == 200: return jsonify({"success": True})
-            else: return jsonify({"success": False, "error": resp.text})
+            return jsonify({"success": True} if resp.status_code == 200 else {"success": False, "error": resp.text})
 
-        # --- B. VERIFY OTP ---
         elif action_type == 'verify-otp':
             email = data.get('email')
-            user_otp = data.get('otp')
-            if otp_storage.get(email) == user_otp:
+            if otp_storage.get(email) == data.get('otp'):
                 del otp_storage[email]
                 return jsonify({"success": True})
             return jsonify({"success": False, "error": "Invalid OTP"})
 
-        # --- C. CHAT (SMART MODEL SWITCHING) ---
+        # --- CHAT LOGIC (SMART) ---
         else:
             user_msg = data.get('question', '')
-            if not user_msg: return jsonify({"answer": "Empty message"})
-
             final_prompt = user_msg
+            
+            # YouTube Check
             if "youtube.com" in user_msg or "youtu.be" in user_msg:
                 vid = extract_video_id(user_msg)
                 if vid:
                     trans = get_youtube_transcript(vid)
                     if trans: final_prompt = f"Video Content: {trans}\n\nUser Question: {user_msg}"
 
-            # --- MODEL FIX: List of Models to Try ---
-            # Agar pehla fail hoga, code apne aap doosra try karega.
-            models = ["gemini-1.5-flash", "gemini-pro"]
-            
-            for model in models:
+            # Step 1: Models ki list mangwao
+            model_list = get_best_working_model(gemini_key)
+            last_error = ""
+
+            # Step 2: Ek-ek karke try karo
+            for model in model_list:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
                     payload = {"contents": [{"parts": [{"text": final_prompt}]}]}
-                    resp = requests.post(url, headers={'Content-Type': 'application/json'}, data=json.dumps(payload))
+                    headers = {'Content-Type': 'application/json'}
+                    
+                    resp = requests.post(url, headers=headers, data=json.dumps(payload))
                     
                     if resp.status_code == 200:
+                        # Jawab mil gaya! Bhej do.
                         return jsonify({"answer": resp.json()['candidates'][0]['content']['parts'][0]['text']})
                     else:
-                        print(f"Model {model} failed with {resp.status_code}, trying next...")
-                        continue # Agla model try karo
-                except:
+                        # Is model ne dhokha diya, error note karo aur agla try karo
+                        error_detail = resp.json().get('error', {}).get('message', resp.text)
+                        last_error = f"Model {model} failed: {error_detail}"
+                        continue 
+                except Exception as e:
+                    last_error = str(e)
                     continue
-            
-            return jsonify({"answer": "Error: All models are busy right now. Please try again in 1 min."})
+
+            # Agar saare fail ho gaye, to ASLI ERROR dikhao (Generic nahi)
+            return jsonify({"answer": f"System Error: {last_error}. (Check API Key or Limits)"})
 
     except Exception as e:
-        return jsonify({"answer": "Server Error", "error": str(e)})
-        
+        return jsonify({"answer": "Critical Server Error", "error": str(e)})
