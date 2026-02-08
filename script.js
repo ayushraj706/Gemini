@@ -3,53 +3,63 @@ const chatForm = document.getElementById("chatForm");
 const promptInput = document.getElementById("promptInput");
 const headerSection = document.getElementById("headerSection");
 
-// Message HTML Structure
-const createMessageElement = (content, className) => {
-  const div = document.createElement("div");
-  div.classList.add("message", className);
-  div.innerHTML = content;
-  return div;
-}
+// Message HTML Banane ka Function
+const createMessageHTML = (text, isUser, isLoading = false) => {
+  const className = isUser ? "message--outgoing" : "message--incoming";
+  const icon = isUser ? "bx-user" : "bx-bot";
+  
+  // Agar loading hai to text badal do
+  const content = isLoading 
+    ? `<div class="loading-animation">Thinking...</div>` 
+    : marked.parse(text); // Markdown formatting
 
-// Backend API Call
-const getBotResponse = async (userText, loadingDiv) => {
+  return `
+    <div class="message ${className}">
+      <div class="message__content">
+        <div class="message__icon"><i class='bx ${icon}'></i></div>
+        <div class="message__text">${content}</div>
+      </div>
+    </div>
+  `;
+};
+
+// API Call Function
+const generateResponse = async (userText) => {
+  // 1. Loading Message Dikhao
+  const loadingDiv = document.createElement("div");
+  loadingDiv.innerHTML = createMessageHTML("", false, true);
+  chatContainer.appendChild(loadingDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
   try {
+    // 2. Vercel Python API ko call karo
     const response = await fetch('/api', {
       method: 'POST',
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
           question: userText,
-          source: 'web_ui' 
+          source: 'web_ui'
       })
     });
 
     const data = await response.json();
     
-    // Loading hatao aur asli jawab dikhao
+    // 3. Loading hatao aur asli jawab dikhao
     chatContainer.removeChild(loadingDiv);
     
-    // Markdown ko HTML mein badlo (Bold, Code, etc.)
-    const botHtml = `<div class="message__content">
-                        <img class="message__avatar" src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" alt="AI">
-                        <div class="message__text">${marked.parse(data.answer)}</div>
-                     </div>`;
-                     
-    const botDiv = createMessageElement(botHtml, "message--incoming");
+    const botDiv = document.createElement("div");
+    botDiv.innerHTML = createMessageHTML(data.answer, false);
     chatContainer.appendChild(botDiv);
-    
-    // Code Blocks ko highlight karo
-    document.querySelectorAll('pre code').forEach((el) => {
-        hljs.highlightElement(el);
-    });
-    
-    chatContainer.scrollTop = chatContainer.scrollHeight;
 
   } catch (error) {
     chatContainer.removeChild(loadingDiv);
-    const errorHtml = `<div class="message__content"><div class="message__text" style="color:red;">Error: Server connect nahi hua.</div></div>`;
-    chatContainer.appendChild(createMessageElement(errorHtml, "message--error"));
+    const errorDiv = document.createElement("div");
+    errorDiv.innerHTML = createMessageHTML("Error: Server connect nahi hua.", false);
+    chatContainer.appendChild(errorDiv);
   }
-}
+  
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+};
 
 // Form Submit Handler
 const handleOutgoingChat = (e) => {
@@ -57,36 +67,25 @@ const handleOutgoingChat = (e) => {
   const userText = promptInput.value.trim();
   if (!userText) return;
 
-  // Header chupao jab chat shuru ho
+  // Header ko chhupao
   headerSection.style.display = "none";
 
-  // User Message Add karo
-  const userHtml = `<div class="message__content">
-                      <div class="message__text">${userText}</div>
-                      <img class="message__avatar" src="https://cdn-icons-png.flaticon.com/512/1144/1144760.png" alt="User">
-                    </div>`;
-  const userDiv = createMessageElement(userHtml, "message--outgoing");
+  // User ka message add karo
+  const userDiv = document.createElement("div");
+  userDiv.innerHTML = createMessageHTML(userText, true);
   chatContainer.appendChild(userDiv);
-  
+
   promptInput.value = "";
   chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  // Loading Animation Add karo
-  const loadingHtml = `<div class="message__content">
-                         <img class="message__avatar" src="https://cdn-icons-png.flaticon.com/512/4712/4712027.png" alt="AI">
-                         <div class="message__text">Thinking...</div>
-                       </div>`;
-  const loadingDiv = createMessageElement(loadingHtml, "message--incoming");
-  chatContainer.appendChild(loadingDiv);
+  // Bot se jawaab mango
+  generateResponse(userText);
+};
 
-  getBotResponse(userText, loadingDiv);
-}
-
-// Suggestion Click Helper
+// Helper function for suggestions
 window.fillPrompt = (text) => {
     promptInput.value = text;
     chatForm.dispatchEvent(new Event('submit'));
 }
 
 chatForm.addEventListener("submit", handleOutgoingChat);
-
