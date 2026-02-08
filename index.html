@@ -157,12 +157,19 @@
             }
         });
 
-        function loginWithGoogle() {
+                function loginWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
+            
+            // Ye line "BaseKey" wala naam aur logo layegi
+            provider.setCustomParameters({
+                client_id: "51177935348-vcl2gvtlnqittjra8emmtuehrvifj02u.apps.googleusercontent.com"
+            });
+
             auth.signInWithPopup(provider).catch((error) => {
                 alert("Login Error: " + error.message);
             });
-        }
+                }
+        
 
         function logout() {
             auth.signOut();
