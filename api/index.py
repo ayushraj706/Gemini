@@ -8,7 +8,7 @@ import random
 
 app = Flask(__name__)
 
-# --- MEMORY FOR OTP (Temporary) ---
+# --- OTP STORE (Temporary Memory) ---
 otp_storage = {}
 
 # --- HELPER FUNCTIONS ---
@@ -25,58 +25,52 @@ def get_youtube_transcript(video_id):
         return " ".join([t['text'] for t in transcript_list])
     except: return None
 
-# --- MAIN HANDLER (Sab kuch yahi karega) ---
+# --- MAIN ROUTE ---
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
 @app.route('/<path:path>', methods=['GET', 'POST'])
 def catch_all(path):
-    # 1. Check API Keys
     gemini_key = os.environ.get("GEMINI_API_KEY")
     resend_key = os.environ.get("RESEND_API_KEY")
 
     if request.method == 'GET':
-        return jsonify({"status": "Online", "message": "All Systems Operational"})
+        return jsonify({"status": "Online"})
 
-    # 2. Handle POST Requests
     try:
         data = request.json
-        action_type = data.get('type') # Pata karo user kya chahta hai (chat, otp, verify)
+        action_type = data.get('type')
 
-        # --- A. SEND OTP ---
+        # --- 1. SEND OTP (Resend API) ---
         if action_type == 'send-otp':
-            if not resend_key: return jsonify({"success": False, "error": "Resend Key Missing"})
             email = data.get('email')
             otp = str(random.randint(100000, 999999))
             otp_storage[email] = otp
             
-            # Send Email
             resp = requests.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
                 json={
                     "from": "onboarding@resend.dev",
                     "to": email,
-                    "subject": "BotKey OTP Login",
-                    "html": f"<strong>Your OTP is: {otp}</strong>"
+                    "subject": "Verify your Login - BaseKey AI",
+                    "html": f"<h2>BaseKey Verification</h2><p>Your OTP is: <strong>{otp}</strong></p>"
                 }
             )
             if resp.status_code == 200: return jsonify({"success": True})
             else: return jsonify({"success": False, "error": resp.text})
 
-        # --- B. VERIFY OTP ---
+        # --- 2. VERIFY OTP ---
         elif action_type == 'verify-otp':
             email = data.get('email')
             user_otp = data.get('otp')
             if otp_storage.get(email) == user_otp:
                 del otp_storage[email]
                 return jsonify({"success": True})
-            return jsonify({"success": False, "error": "Wrong OTP"})
+            return jsonify({"success": False, "error": "Incorrect OTP"})
 
-        # --- C. CHAT (DEFAULT) ---
+        # --- 3. CHAT (Gemini) ---
         else:
             user_msg = data.get('question', '')
-            if not user_msg: return jsonify({"answer": "Empty message."})
-
-            # YouTube Check
+            # YouTube Logic
             final_prompt = user_msg
             if "youtube.com" in user_msg or "youtu.be" in user_msg:
                 vid = extract_video_id(user_msg)
@@ -84,7 +78,7 @@ def catch_all(path):
                     trans = get_youtube_transcript(vid)
                     if trans: final_prompt = f"Video Content: {trans}\n\nUser Question: {user_msg}"
 
-            # Gemini Request (Pro Model)
+            # Gemini Call
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             payload = {"contents": [{"parts": [{"text": final_prompt}]}]}
             resp = requests.post(url, headers={'Content-Type': 'application/json'}, data=json.dumps(payload))
@@ -92,8 +86,8 @@ def catch_all(path):
             if resp.status_code == 200:
                 return jsonify({"answer": resp.json()['candidates'][0]['content']['parts'][0]['text']})
             else:
-                return jsonify({"answer": "Error from Google: " + resp.text})
+                return jsonify({"answer": "Error: " + resp.text})
 
     except Exception as e:
-        return jsonify({"answer": f"Server Error: {str(e)}", "success": False, "error": str(e)})
+        return jsonify({"answer": "Server Error", "error": str(e)})
         
