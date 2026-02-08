@@ -1,112 +1,98 @@
 from flask import Flask, request, jsonify
+from youtube_transcript_api import YouTubeTranscriptApi
 import requests
 import json
 import os
+import re
+import random
 
 app = Flask(__name__)
 
-# --- FUNCTION 1: Google se pucho "Kon kon se models hain?" ---
-def get_available_models(api_key):
+# --- OTP STORE (Simple In-Memory for Demo) ---
+otp_storage = {}
+
+# --- HELPER: YouTube Logic ---
+def extract_video_id(url):
+    patterns = [r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})']
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match: return match.group(1)
+    return None
+
+def get_youtube_transcript(video_id):
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
-        res = requests.get(url)
-        
-        if res.status_code == 200:
-            all_models = res.json().get('models', [])
-            usable_models = []
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['hi', 'en'])
+        return " ".join([t['text'] for t in transcript_list])
+    except: return None
 
-            # Sirf wo models chuno jo Text Generation (Chat) karte hain
-            for m in all_models:
-                if "generateContent" in m.get("supportedGenerationMethods", []):
-                    usable_models.append(m['name']) # e.g., models/gemini-1.5-flash
-            
-            # --- PRIORITY LIST (Humein kaunsa pehle chahiye) ---
-            # Hum chahte hain ki pehle "Flash" try kare (Fast/Free), fir "Pro"
-            priority_order = [
-                "models/gemini-1.5-flash", 
-                "models/gemini-1.5-flash-001",
-                "models/gemini-1.5-pro",
-                "models/gemini-pro",
-                "models/gemini-1.0-pro"
-            ]
-            
-            # List ko sort karo hamari pasand ke hisab se
-            sorted_models = sorted(usable_models, key=lambda x: priority_order.index(x) if x in priority_order else 99)
-            return sorted_models
-            
-    except Exception as e:
-        print(f"Error fetching models: {e}")
+# --- ROUTE: Send OTP (Resend API) ---
+@app.route('/api/send-otp', methods=['POST'])
+def send_otp():
+    data = request.json
+    email = data.get('email')
+    api_key = os.environ.get("RESEND_API_KEY")
     
-    # Agar list nahi mili, toh ye fallback use karo
-    return ["models/gemini-1.5-flash", "models/gemini-pro"]
+    if not api_key: return jsonify({"error": "Resend API Key missing in Vercel!"}), 500
 
-# --- FUNCTION 2: Message bhejo (Retry System ke sath) ---
-def try_generate_content(api_key, user_msg):
-    # Step 1: Models ki list mangwao
-    model_list = get_available_models(api_key)
+    # 1. Generate OTP
+    otp = str(random.randint(100000, 999999))
+    otp_storage[email] = otp # Store temporary
+
+    # 2. Send Email via Resend
+    url = "https://api.resend.com/emails"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {
+        "from": "onboarding@resend.dev", # Ya apna domain use karein
+        "to": email,
+        "subject": "Your BaseKey Login OTP",
+        "html": f"<strong>Your OTP is: {otp}</strong>"
+    }
     
-    last_error = ""
+    resp = requests.post(url, headers=headers, json=payload)
+    
+    if resp.status_code == 200:
+        return jsonify({"success": True, "message": "OTP Sent!"})
+    else:
+        return jsonify({"success": False, "error": resp.text})
 
-    # Step 2: Ek-ek karke models try karo
-    for model_name in model_list:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
-            payload = {"contents": [{"parts": [{"text": user_msg}]}]}
-            headers = {'Content-Type': 'application/json'}
+# --- ROUTE: Verify OTP ---
+@app.route('/api/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.json
+    email = data.get('email')
+    user_otp = data.get('otp')
+    
+    if email in otp_storage and otp_storage[email] == user_otp:
+        del otp_storage[email] # Clear OTP after use
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Invalid OTP"})
 
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-            # Agar Success (200) hai, toh turant jawab bhej do
-            if response.status_code == 200:
-                return {
-                    "success": True, 
-                    "answer": response.json()['candidates'][0]['content']['parts'][0]['text'],
-                    "model_used": model_name
-                }
-            
-            # Agar 429 (Limit Khatam) ya 404 (Not Found) hai, toh next model try karo
-            else:
-                print(f"Model {model_name} failed: {response.status_code}")
-                last_error = f"Model {model_name} error: {response.text}"
-                continue # Agla model try karo
-
-        except Exception as e:
-            last_error = str(e)
-            continue
-
-    # Agar saare models fail ho gaye
-    return {"success": False, "error": "Saare models busy hain ya limit khatam ho gayi hai. " + last_error}
-
-# --- MAIN ROUTE ---
+# --- MAIN CHAT ROUTE (With Auto-Switch Logic) ---
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
 @app.route('/<path:path>', methods=['GET', 'POST'])
 def catch_all(path):
-    # 1. API Key Check
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return jsonify({"answer": "Error: API Key missing in Vercel Settings!"})
-
-    # 2. Browser Check
-    if request.method == 'GET':
-        return jsonify({"status": "Online", "message": "Smart Engine Ready!"})
-
-    # 3. Chat Logic
-    try:
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    
+    if request.method == 'POST':
         data = request.json
         user_msg = data.get('question', '')
-
-        if not user_msg:
-            return jsonify({"answer": "Empty message."})
-
-        # Smart Function Call
-        result = try_generate_content(api_key, user_msg)
-
-        if result["success"]:
-            # Jawab ke sath model ka naam bhi bhej raha hu (Debugging ke liye)
-            return jsonify({"answer": result["answer"]})
-        else:
-            return jsonify({"answer": f"System Error: {result['error']}"})
-
-    except Exception as e:
-        return jsonify({"answer": f"Server Crash: {str(e)}"})
         
+        # YouTube Logic
+        final_prompt = user_msg
+        if "youtube.com" in user_msg or "youtu.be" in user_msg:
+            vid = extract_video_id(user_msg)
+            if vid:
+                trans = get_youtube_transcript(vid)
+                if trans: final_prompt = f"Video Content: {trans}\n\nUser Question: {user_msg}"
+
+        # Gemini Logic (Auto-Switch 1.5 Flash -> Pro)
+        models = ["gemini-1.5-flash", "gemini-pro"]
+        for model in models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+            resp = requests.post(url, headers={'Content-Type': 'application/json'}, data=json.dumps({"contents": [{"parts": [{"text": final_prompt}]}]}))
+            if resp.status_code == 200:
+                return jsonify({"answer": resp.json()['candidates'][0]['content']['parts'][0]['text']})
+        
+        return jsonify({"answer": "Error: All models busy."})
+
+    return jsonify({"status": "Active"})
