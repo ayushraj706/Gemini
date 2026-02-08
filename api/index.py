@@ -5,24 +5,6 @@ import os
 
 app = Flask(__name__)
 
-# --- SMART FUNCTION: Google se poocho "Kon sa Model hai?" ---
-def get_available_model(api_key):
-    try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
-        res = requests.get(url)
-        
-        if res.status_code == 200:
-            models = res.json().get('models', [])
-            # List mein se wo model dhoondo jo 'generateContent' support karta ho
-            for model in models:
-                if "generateContent" in model.get("supportedGenerationMethods", []):
-                    # Sabse pehla jo mile (Jaise 'models/gemini-1.5-flash' ya 'models/gemini-pro')
-                    return model['name']
-    except:
-        pass
-    # Agar list nahi mili, toh Safe fallback use karo
-    return "models/gemini-1.5-flash"
-
 # --- MAIN ROUTE ---
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
 @app.route('/<path:path>', methods=['GET', 'POST'])
@@ -44,10 +26,10 @@ def catch_all(path):
         if not user_msg:
             return jsonify({"answer": "Kuch likho toh sahi!"})
 
-        # --- STEP 1: Google se poocho kon sa model use karein ---
-        model_name = get_available_model(api_key)
+        # --- FIX: Stable Model Use Karo (High Limit) ---
+        # 2.5-flash ka limit sirf 20 tha, 1.5-flash ka limit 1500 hai.
+        model_name = "models/gemini-1.5-flash"
         
-        # --- STEP 2: Us model se jawab maango ---
         url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
         payload = {"contents": [{"parts": [{"text": user_msg}]}]}
         headers = {'Content-Type': 'application/json'}
