@@ -1,0 +1,17 @@
+{
+  "name": "BotKey AI",
+  "short_name": "BotKey",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#131314",
+  "theme_color": "#131314",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
