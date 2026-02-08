@@ -12,11 +12,11 @@ def catch_all(path):
     # 1. API Key Check
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return jsonify({"answer": "Error: Vercel Settings me API Key nahi mili!"})
+        return jsonify({"answer": "Error: API Key missing in Vercel Settings!"})
 
-    # 2. Browser Check
+    # 2. Browser Check (GET request)
     if request.method == 'GET':
-        return jsonify({"status": "Online", "message": "Server Ready hai!"})
+        return jsonify({"status": "Online", "message": "Server is Running on Gemini Pro (Stable)!"})
 
     # 3. Chat Logic
     try:
@@ -24,23 +24,27 @@ def catch_all(path):
         user_msg = data.get('question', '')
 
         if not user_msg:
-            return jsonify({"answer": "Kuch likho toh sahi!"})
+            return jsonify({"answer": "Empty message."})
 
-        # --- FIX: Stable Model Use Karo (High Limit) ---
-        # 2.5-flash ka limit sirf 20 tha, 1.5-flash ka limit 1500 hai.
-        model_name = "models/gemini-1.5-flash"
+        # --- FIX: Sabse Stable Model Use Karo ---
+        # 'gemini-1.5-flash' mein naam ka lafda ho raha hai (404).
+        # 'gemini-pro' sabse purana aur stable hai. Ye kabhi 404 nahi deta.
+        model_name = "gemini-pro"
         
-        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
+        # URL construction
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        
         payload = {"contents": [{"parts": [{"text": user_msg}]}]}
         headers = {'Content-Type': 'application/json'}
 
+        # Request bhejo
         response = requests.post(url, headers=headers, data=json.dumps(payload))
 
         if response.status_code == 200:
             return jsonify({"answer": response.json()['candidates'][0]['content']['parts'][0]['text']})
         else:
-            # Agar fail hua, toh error dikhao
-            return jsonify({"answer": f"Google Error ({model_name}): {response.text}"})
+            # Agar ab bhi error aaye, toh error code wapas karo
+            return jsonify({"answer": f"Google Error: {response.status_code} - {response.text}"})
 
     except Exception as e:
         return jsonify({"answer": f"Server Error: {str(e)}"})
