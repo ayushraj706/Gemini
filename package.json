@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "ai": "^6.0.82",
+    "framer-motion": "^12.34.0",
+    "react-markdown": "^10.1.0"
+  }
+}
