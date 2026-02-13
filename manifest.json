@@ -1,17 +1,53 @@
 {
-  "name": "BotKey AI",
-  "short_name": "BotKey",
-  "start_url": "/index.html",
+  "name": "BaseKey - Startup Tools",
+  "short_name": "BaseKey",
+  "description": "All-in-one tools for modern startups and developers.",
+  "id": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
-  "background_color": "#131314",
-  "theme_color": "#131314",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+      "src": "https://ui-avatars.com/api/?name=Base+Key&background=000000&color=fff&size=192&length=2&font-size=0.5",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://ui-avatars.com/api/?name=Base+Key&background=000000&color=fff&size=512&length=2&font-size=0.5",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "https://via.placeholder.com/1080x1920.png?text=BaseKey+Mobile+Home",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "https://via.placeholder.com/1920x1080.png?text=BaseKey+Desktop+Dashboard",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Project",
+      "short_name": "Create",
+      "url": "/create-new",
+      "icons": [{ 
+        "src": "https://ui-avatars.com/api/?name=New+Project&background=000000&color=fff&size=96&length=1", 
+        "sizes": "96x96" 
+      }]
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en-US",
+  "dir": "ltr"
 }
-
