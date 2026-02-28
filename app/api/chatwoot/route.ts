@@ -3,23 +3,28 @@ import axios from 'axios';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json(); // Pehle yahan req.body.json() tha jo galat tha
+    // Sahi tareeka: req.json() use karein
+    const body = await req.json();
 
-    // 1. Check karo ki message user ne bheja hai (Incoming)
+    // Sirf user ke messages (incoming) par reply dena hai
     if (body.message_type === 'incoming' && body.event === 'message_created') {
       const userMessage = body.content;
       const conversationId = body.conversation.id;
       const accountId = body.account.id;
 
-      // 2. Gemini API ko message bhejo
+      // 1. Gemini API se response mangna
       const geminiRes = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        { contents: [{ parts: [{ text: userMessage }] }] }
+        {
+          contents: [{
+            parts: [{ text: userMessage }]
+          }]
+        }
       );
 
       const botReply = geminiRes.data.candidates[0].content.parts[0].text;
 
-      // 3. Chatwoot API ko reply bhejo
+      // 2. Chatwoot API ko wapas reply bhejna
       await axios.post(
         `https://chatwoot.ayus.fun/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`,
         {
@@ -34,9 +39,10 @@ export async function POST(req: Request) {
         }
       );
     }
+
     return NextResponse.json({ status: 'success' });
   } catch (error) {
-    console.error("Error in Gemini-Chatwoot Bridge:", error);
+    console.error("Gemini-Chatwoot Bridge Error:", error);
     return NextResponse.json({ status: 'error' }, { status: 500 });
   }
 }
